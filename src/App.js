@@ -6,10 +6,10 @@ function windChill(t, v) {
   return Math.round(13.12 + 0.6215*t - 11.37*Math.pow(v,0.16) + 0.3965*t*Math.pow(v,0.16));
 }
 
-function computeOutfit(temp, wind, humidity, duration, sensitivity, intensity, sky) {
+function computeOutfit(temp, wind, humidity, duration, sensitivity, intensity, sky, gender) {
   const wc = windChill(temp, wind);
   const sensOffset = sensitivity === 'cold' ? -3 : sensitivity === 'warm' ? +3 : 0;
-  const intOffset = intensity === 'fast' ? +4 : intensity === 'slow' ? -2 : 0;
+  const intOffset = intensity === 'fast' ? +4 : intensity === 'medium' || intensity === 'intervals' ? 0 : -2;
   const durOffset = duration >= 90 ? -1 : 0;
   const perceived = wc + sensOffset + intOffset + durOffset;
 
@@ -41,12 +41,22 @@ function computeOutfit(temp, wind, humidity, duration, sensitivity, intensity, s
     items.push({ icon: '🧦', label: 'Calzini tecnici' });
     if (perceived < 11) items.push({ icon: '🧤', label: 'Guanti sottili' });
   } else if (perceived <= 20) {
-    items.push({ icon: '👕', label: 'Maglia maniche corte' });
+    if (gender === 'female') {
+      items.push({ icon: '👙', label: 'Top sportivo' });
+      if (sensitivity !== 'warm') items.push({ icon: '👕', label: 'Maglia maniche corte' });
+    } else {
+      items.push({ icon: '👕', label: 'Maglia maniche corte' });
+    }
     if (intensity === 'slow') items.push({ icon: '🧥', label: 'Felpa leggera' });
     items.push({ icon: '🩳', label: 'Shorts o leggins corti' });
     items.push({ icon: '🧦', label: 'Calzini tecnici' });
   } else {
-    items.push({ icon: '👕', label: 'Maglia tecnica maniche corte' });
+    if (gender === 'female') {
+      items.push({ icon: '👙', label: 'Top sportivo' });
+      if (sensitivity === 'cold') items.push({ icon: '👕', label: 'Maglia tecnica maniche corte' });
+    } else {
+      items.push({ icon: '👕', label: 'Maglia tecnica maniche corte' });
+    }
     items.push({ icon: '🩳', label: 'Shorts' });
     items.push({ icon: '🧦', label: 'Calzini corti' });
     if (perceived >= 27) notes.push('Caldo intenso: porta acqua e corri nelle ore più fresche.');
@@ -56,14 +66,20 @@ function computeOutfit(temp, wind, humidity, duration, sensitivity, intensity, s
     items.push({ icon: '🌧️', label: 'Giacca impermeabile' });
     notes.push('Con la pioggia aggiungi sempre uno strato impermeabile sopra.');
   }
-  if (sky === 'sunny' && perceived >= 18) {
-    notes.push('Sole diretto: considera cappellino con visiera e protezione solare.');
+   if (sky === 'sunny') {
+    notes.push('Sole diretto: cappellino con visiera e protezione solare consigliati.');
   }
   if (humidity >= 80 && temp >= 15) {
     notes.push('Alta umidità percepita: preferisci tessuti che evaporano rapidamente.');
   }
+  if (perceived >= 18) {
+    notes.push('Caldo e attrito: applica crema antisfregamento su cosce e ascelle.');
+  }
   if (duration >= 90) {
     notes.push('Uscita lunga: potresti scaldarti in corsa, valuta strati rimovibili.');
+  }
+  if (intensity === 'intervals' && perceived < 18) {
+    notes.push('Ripetute con pause: durante le soste il corpo si raffredda rapidamente, tieni un capo extra con te da indossare nelle pause.');
   }
 
   return { items, notes, perceived, wc };
@@ -97,6 +113,7 @@ function SliderRow({ icon, label, min, max, step, value, unit, onChange }) {
 }
 
 export default function App() {
+  const [gender, setGender] = useState('male');
   const [sensitivity, setSensitivity] = useState('normal');
   const [intensity, setIntensity] = useState('medium');
   const [duration, setDuration] = useState(45);
@@ -106,7 +123,7 @@ export default function App() {
   const [sky, setSky] = useState('cloudy');
 
   const { items, notes, perceived, wc } = computeOutfit(
-    temp, wind, humidity, duration, sensitivity, intensity, sky
+    temp, wind, humidity, duration, sensitivity, intensity, sky, gender
   );
 
   const wcLabel = temp !== wc
@@ -117,6 +134,17 @@ export default function App() {
     <div className="app">
       <h1>🏃 RunWear</h1>
       <p className="subtitle">Cosa indossare per la tua uscita</p>
+
+      <section>
+        <p className="section-label">Sei</p>
+        <PillGroup
+          options={[
+            { value: 'male', label: '👨 Uomo' },
+            { value: 'female', label: '👩 Donna' },
+          ]}
+          value={gender} onChange={setGender}
+        />
+      </section>
 
       <section>
         <p className="section-label">Come senti il freddo?</p>
@@ -136,7 +164,8 @@ export default function App() {
           options={[
             { value: 'slow', label: 'Lento / rigenerativo' },
             { value: 'medium', label: 'Medio' },
-            { value: 'fast', label: 'Veloce / intervalli' },
+            { value: 'fast', label: 'Veloce' },
+            { value: 'intervals', label: 'Ripetute con pause' },
           ]}
           value={intensity} onChange={setIntensity}
         />
@@ -188,5 +217,3 @@ export default function App() {
     </div>
   );
 }
-
-
